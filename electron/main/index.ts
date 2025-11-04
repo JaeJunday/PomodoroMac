@@ -36,10 +36,9 @@ type PomodoroDockPayload = {
   running: boolean
 }
 
-const WINDOW_WIDTH = 340
-const WINDOW_HEIGHT = 380
+const WINDOW_WIDTH = 360
+const WINDOW_HEIGHT = 600
 const WINDOW_MARGIN = 24
-let isLocked = true
 let win: BrowserWindow | null = null
 const preload = path.join(__dirname, '../preload/index.mjs')
 const indexHtml = path.join(RENDERER_DIST, 'index.html')
@@ -100,28 +99,6 @@ async function createWindow() {
     await win.loadFile(indexHtml)
   }
 
-  win.on('close', (event) => {
-    if (isLocked) {
-      event.preventDefault()
-      win?.webContents.send('pomodoro:prevent-close')
-    } else {
-      win = null
-    }
-  })
-
-  win.on('hide', () => {
-    if (isLocked) {
-      win?.showInactive()
-    }
-  })
-
-  win.on('minimize', () => {
-    if (isLocked) {
-      win?.restore()
-      win?.showInactive()
-    }
-  })
-
   win.on('closed', () => {
     win = null
   })
@@ -131,7 +108,6 @@ async function createWindow() {
     return { action: 'deny' }
   })
 
-  applyLockState(isLocked)
   update(win)
 }
 
@@ -157,20 +133,6 @@ const parseDockPayload = (raw: unknown): PomodoroDockPayload | null => {
   return { phase, minutesLeft, totalMinutes, remainingRatio, running }
 }
 
-const applyLockState = (locked: boolean) => {
-  isLocked = locked
-  if (!win) return
-  win.setAlwaysOnTop(locked, locked ? 'screen-saver' : 'normal')
-  win.setVisibleOnAllWorkspaces(locked, { visibleOnFullScreen: true })
-  win.setClosable(!locked)
-  if (typeof win.setMovable === 'function') {
-    win.setMovable(!locked)
-  }
-  if (locked && win.isMinimized()) {
-    win.restore()
-  }
-}
-
 const describeDockSectorPath = (ratio: number, radius: number, cx = 256, cy = 256): string => {
   const clamped = Math.max(0, Math.min(1, ratio))
   if (clamped <= 0) return ''
@@ -179,25 +141,26 @@ const describeDockSectorPath = (ratio: number, radius: number, cx = 256, cy = 25
     return [
       `M ${cx} ${cy}`,
       `m 0 ${-radius}`,
-      `A ${radius} ${radius} 0 1 0 ${cx - epsilon} ${cy - radius}`,
+      `A ${radius} ${radius} 0 1 1 ${cx + epsilon} ${cy - radius}`,
       'Z',
     ].join(' ')
   }
 
   const startAngle = -Math.PI / 2
   const sweep = clamped * Math.PI * 2
-  const endAngle = startAngle - sweep
+  const endAngle = startAngle + sweep
 
   const startX = cx + radius * Math.cos(startAngle)
   const startY = cy + radius * Math.sin(startAngle)
   const endX = cx + radius * Math.cos(endAngle)
   const endY = cy + radius * Math.sin(endAngle)
   const largeArcFlag = clamped > 0.5 ? 1 : 0
+  const sweepFlag = 1
 
   return [
     `M ${cx} ${cy}`,
     `L ${startX.toFixed(2)} ${startY.toFixed(2)}`,
-    `A ${radius} ${radius} 0 ${largeArcFlag} 0 ${endX.toFixed(2)} ${endY.toFixed(2)}`,
+    `A ${radius} ${radius} 0 ${largeArcFlag} ${sweepFlag} ${endX.toFixed(2)} ${endY.toFixed(2)}`,
     'Z',
   ].join(' ')
 }
@@ -253,34 +216,6 @@ const updateDockIcon = (payload: PomodoroDockPayload) => {
     app.dock.setIcon(image)
   }
 }
-
-app.on('window-all-closed', () => {
-  win = null
-  if (process.platform !== 'darwin') app.quit()
-})
-
-app.on('second-instance', () => {
-  if (win) {
-    // Focus on the main window if the user tried to open another
-    if (win.isMinimized()) win.restore()
-    win.focus()
-  }
-})
-
-app.on('activate', () => {
-  const allWindows = BrowserWindow.getAllWindows()
-  if (allWindows.length) {
-    allWindows[0].focus()
-  } else {
-    createWindow()
-  }
-})
-
-ipcMain.handle('pomodoro:set-lock-state', (_, locked: boolean) => {
-  applyLockState(Boolean(locked))
-})
-
-ipcMain.handle('pomodoro:get-lock-state', () => isLocked)
 
 ipcMain.handle('pomodoro:update-dock-icon', (_event, payload) => {
   const parsed = parseDockPayload(payload)

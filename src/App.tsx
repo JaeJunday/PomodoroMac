@@ -20,7 +20,7 @@ const PHASE_META: Record<Phase, { label: string; defaultMinutes: number }> = {
 
 const SECONDS_IN_MINUTE = 60
 const MAX_MINUTES = 60
-const TIMER_RADIUS = 80
+const TIMER_RADIUS = 90
 
 const describeSectorPath = (ratio: number): string => {
   const clamped = Math.max(0, Math.min(1, ratio))
@@ -30,25 +30,26 @@ const describeSectorPath = (ratio: number): string => {
     return [
       `M 100 100`,
       `m 0 ${-TIMER_RADIUS}`,
-      `A ${TIMER_RADIUS} ${TIMER_RADIUS} 0 1 0 ${100 - epsilon} ${100 - TIMER_RADIUS}`,
+      `A ${TIMER_RADIUS} ${TIMER_RADIUS} 0 1 1 ${100 + epsilon} ${100 - TIMER_RADIUS}`,
       'Z',
     ].join(' ')
   }
 
   const startAngle = -Math.PI / 2
   const sweep = clamped * Math.PI * 2
-  const endAngle = startAngle - sweep
+  const endAngle = startAngle + sweep
 
   const startX = 100 + TIMER_RADIUS * Math.cos(startAngle)
   const startY = 100 + TIMER_RADIUS * Math.sin(startAngle)
   const endX = 100 + TIMER_RADIUS * Math.cos(endAngle)
   const endY = 100 + TIMER_RADIUS * Math.sin(endAngle)
   const largeArcFlag = clamped > 0.5 ? 1 : 0
+  const sweepFlag = 1
 
   return [
     `M 100 100`,
     `L ${startX.toFixed(3)} ${startY.toFixed(3)}`,
-    `A ${TIMER_RADIUS} ${TIMER_RADIUS} 0 ${largeArcFlag} 0 ${endX.toFixed(3)} ${endY.toFixed(3)}`,
+    `A ${TIMER_RADIUS} ${TIMER_RADIUS} 0 ${largeArcFlag} ${sweepFlag} ${endX.toFixed(3)} ${endY.toFixed(3)}`,
     'Z',
   ].join(' ')
 }
@@ -59,11 +60,40 @@ const formatTime = (totalSeconds: number) => {
   return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`
 }
 
+const PlayIcon: FC = () => (
+  <svg className='icon' width='24' height='24' viewBox='0 0 24 24' aria-hidden='true'>
+    <path d='M8 5v14l10-7z' fill='currentColor' />
+  </svg>
+)
+
+const PauseIcon: FC = () => (
+  <svg className='icon' width='24' height='24' viewBox='0 0 24 24' aria-hidden='true'>
+    <rect x='7' y='5' width='4' height='14' rx='1.2' fill='currentColor' />
+    <rect x='13' y='5' width='4' height='14' rx='1.2' fill='currentColor' />
+  </svg>
+)
+
+const ResetIcon: FC = () => (
+  <svg className='icon' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='1.8' strokeLinecap='round' strokeLinejoin='round' aria-hidden='true'>
+    <path d='M5 8.5V4h4.5' />
+    <path d='M5 4l4.5 4.5' />
+    <path d='M6.8 12a6.2 6.2 0 1 0 1.8-4.4' />
+  </svg>
+)
+
+const SkipIcon: FC = () => (
+  <svg className='icon' width='24' height='24' viewBox='0 0 24 24' aria-hidden='true'>
+    <path d='M7.5 6.5 14 12l-6.5 5.5V6.5z' fill='currentColor' />
+    <rect x='15.5' y='6' width='1.8' height='12' rx='0.9' fill='currentColor' />
+  </svg>
+)
+
+
 type TimerCirclePointerHandler = (event: ReactPointerEvent<HTMLDivElement>) => void
 
 type TimerCircleProps = {
   remainingSeconds: number
-  totalSeconds: number
+  remainingRatio: number
   phase: Phase
   phaseLabel: string
   configuredMinutes: number
@@ -77,7 +107,7 @@ type TimerCircleProps = {
 
 const TimerCircle: FC<TimerCircleProps> = ({
   remainingSeconds,
-  totalSeconds,
+  remainingRatio,
   phase,
   phaseLabel,
   configuredMinutes,
@@ -88,8 +118,6 @@ const TimerCircle: FC<TimerCircleProps> = ({
   onPointerUp,
   onPointerCancel,
 }) => {
-  const remainingRatio =
-    totalSeconds <= 0 ? 0 : Math.min(1, Math.max(0, remainingSeconds / totalSeconds))
   const accentColor =
     phase === 'focus' ? 'var(--focus-highlight)' : 'var(--break-highlight)'
   const accentStyle = useMemo(
@@ -136,12 +164,10 @@ const App = () => {
   })
   const [remaining, setRemaining] = useState(PHASE_META.focus.defaultMinutes * SECONDS_IN_MINUTE)
   const [running, setRunning] = useState(false)
-  const [locked, setLocked] = useState(true)
   const [theme, setTheme] = useState<Theme>('dark')
   const [toast, setToast] = useState<string | null>(null)
   const [dragging, setDragging] = useState(false)
   const toastTimeoutRef = useRef<number>()
-  const skipNextLockToastRef = useRef(true)
   const dragPointerId = useRef<number | null>(null)
 
   const totalSeconds = useMemo(() => durations[phase] * SECONDS_IN_MINUTE, [durations, phase])
@@ -164,45 +190,6 @@ const App = () => {
       document.documentElement.removeAttribute('data-theme')
     }
   }, [theme])
-
-  useEffect(() => {
-    let mounted = true
-    window.pomodoro
-      ?.getLockState?.()
-      .then((value) => {
-        if (!mounted) return
-        if (typeof value === 'boolean') {
-          skipNextLockToastRef.current = true
-          setLocked(value)
-        } else {
-          skipNextLockToastRef.current = true
-        }
-      })
-      .catch(() => {
-        skipNextLockToastRef.current = true
-      })
-    return () => {
-      mounted = false
-    }
-  }, [])
-
-  useEffect(() => {
-    window.pomodoro?.setLockState?.(locked)
-    if (skipNextLockToastRef.current) {
-      skipNextLockToastRef.current = false
-      return
-    }
-    showToast(locked ? '잠금 모드가 활성화되었습니다.' : '잠금 모드를 해제했습니다.')
-  }, [locked, showToast])
-
-  useEffect(() => {
-    const dispose = window.pomodoro?.onPreventClose?.(() => {
-      showToast('잠금 모드에서는 창을 닫을 수 없습니다.')
-    })
-    return () => {
-      dispose?.()
-    }
-  }, [showToast])
 
   useEffect(() => {
     if (!running || remaining <= 0) return
@@ -317,10 +304,6 @@ const App = () => {
     showToast(`${PHASE_META[upcoming].label} 세션으로 이동했습니다.`)
   }
 
-  const handleLockToggle = () => {
-    setLocked((prev) => !prev)
-  }
-
   const handleThemeToggle = () => {
     setTheme((prev) => (prev === 'dark' ? 'light' : 'dark'))
   }
@@ -328,22 +311,19 @@ const App = () => {
   return (
     <div className='app-root'>
       <div className='app-shell'>
-        <div className='app-shell__drag' data-locked={locked}>
+        <div className='app-shell__drag'>
           <span className='app-shell__title'>Pomodoro</span>
           <div className='app-shell__actions'>
             <button type='button' className='ghost-button' onClick={handleThemeToggle}>
               {theme === 'dark' ? '라이트' : '다크'}
             </button>
             <span className='status-pill'>{PHASE_META[phase].label}</span>
-            <span className={`lock-indicator ${locked ? 'locked' : 'unlocked'}`}>
-              {locked ? '잠금 중' : '해제됨'}
-            </span>
           </div>
         </div>
 
         <TimerCircle
           remainingSeconds={remaining}
-          totalSeconds={totalSeconds}
+          remainingRatio={remainingRatio}
           phase={phase}
           phaseLabel={PHASE_META[phase].label}
           configuredMinutes={durations[phase]}
@@ -371,14 +351,33 @@ const App = () => {
         </div>
 
         <div className='controls'>
-          <button className='primary wide' onClick={toggleRunning}>
-            {running ? '일시정지' : '시작'}
+          <button
+            type='button'
+            className={`icon-button primary${running ? ' active' : ''}`}
+            onClick={toggleRunning}
+            aria-label={running ? '타이머 일시정지' : '타이머 시작'}
+            title={running ? '일시정지' : '시작'}
+          >
+            {running ? <PauseIcon /> : <PlayIcon />}
           </button>
-          <button onClick={handleSkip}>다음 단계</button>
-          <button className='danger' onClick={handleReset}>
-            초기화
+          <button
+            type='button'
+            className='icon-button'
+            onClick={handleSkip}
+            aria-label='다음 단계로 건너뛰기'
+            title='다음 단계'
+          >
+            <SkipIcon />
           </button>
-          <button onClick={handleLockToggle}>{locked ? '잠금 해제' : '잠금'}</button>
+          <button
+            type='button'
+            className='icon-button danger'
+            onClick={handleReset}
+            aria-label='타이머 초기화'
+            title='초기화'
+          >
+            <ResetIcon />
+          </button>
         </div>
       </div>
 

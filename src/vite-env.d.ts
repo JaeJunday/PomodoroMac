@@ -11,8 +11,5 @@ interface Window {
       remainingRatio: number
       running: boolean
     }) => Promise<void>
-    setLockState: (locked: boolean) => Promise<void>
-    getLockState: () => Promise<boolean>
-    onPreventClose: (callback: () => void) => () => void
   }
 }
