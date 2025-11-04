@@ -32,7 +32,7 @@ type PomodoroDockPayload = {
   phase: 'focus' | 'break'
   minutesLeft: number
   totalMinutes: number
-  progress: number
+  remainingRatio: number
   running: boolean
 }
 
@@ -147,14 +147,14 @@ const parseDockPayload = (raw: unknown): PomodoroDockPayload | null => {
 
   const minutesLeft = Number(payload.minutesLeft ?? 0)
   const totalMinutes = Number(payload.totalMinutes ?? 1)
-  const progress = Number(payload.progress ?? 0)
+  const remainingRatio = Number(payload.remainingRatio ?? 0)
   const running = Boolean(payload.running)
 
-  if (Number.isNaN(minutesLeft) || Number.isNaN(totalMinutes) || Number.isNaN(progress)) {
+  if (Number.isNaN(minutesLeft) || Number.isNaN(totalMinutes) || Number.isNaN(remainingRatio)) {
     return null
   }
 
-  return { phase, minutesLeft, totalMinutes, progress, running }
+  return { phase, minutesLeft, totalMinutes, remainingRatio, running }
 }
 
 const applyLockState = (locked: boolean) => {
@@ -163,15 +163,18 @@ const applyLockState = (locked: boolean) => {
   win.setAlwaysOnTop(locked, locked ? 'screen-saver' : 'normal')
   win.setVisibleOnAllWorkspaces(locked, { visibleOnFullScreen: true })
   win.setClosable(!locked)
+  if (typeof win.setMovable === 'function') {
+    win.setMovable(!locked)
+  }
   if (locked && win.isMinimized()) {
     win.restore()
   }
 }
 
 const buildDockSvg = (payload: PomodoroDockPayload) => {
-  const accent = payload.phase === 'focus' ? '#9fa8ff' : '#73f3c4'
-  const background = payload.phase === 'focus' ? '#161829' : '#102524'
-  const normalized = Math.min(1, Math.max(0, payload.progress))
+  const accent = '#ff4d4f'
+  const background = payload.phase === 'focus' ? '#1a1d32' : '#172321'
+  const normalized = Math.min(1, Math.max(0, payload.remainingRatio))
   const circumference = 2 * Math.PI * 190
   const dashOffset = circumference * (1 - normalized)
   const minutesLabel = payload.minutesLeft > 0 ? String(payload.minutesLeft).padStart(2, '0') : payload.running ? '00' : '--'
@@ -184,7 +187,7 @@ const buildDockSvg = (payload: PomodoroDockPayload) => {
   <g transform="translate(256 256)">
     <circle cx="0" cy="0" r="190" fill="none" stroke="rgba(255,255,255,0.08)" stroke-width="32"/>
     <circle cx="0" cy="0" r="190" fill="none" stroke="${accent}" stroke-width="32" stroke-linecap="round"
-      stroke-dasharray="${circumference.toFixed(2)}" stroke-dashoffset="${dashOffset.toFixed(2)}" transform="rotate(-90)"/>
+      stroke-dasharray="${circumference.toFixed(2)}" stroke-dashoffset="${dashOffset.toFixed(2)}" transform="rotate(-90) scale(-1 1)"/>
   </g>
   <text x="256" y="238" text-anchor="middle" font-size="176" font-family="SF Pro Display, Helvetica Neue, Arial" font-weight="700" fill="#f6f8ff">${minutesLabel}</text>
   <text x="256" y="312" text-anchor="middle" font-size="48" font-family="SF Pro Text, Helvetica Neue, Arial" letter-spacing="12" fill="rgba(255,255,255,0.72)">${statusLabel}</text>
@@ -199,14 +202,19 @@ const updateDockIcon = (payload: PomodoroDockPayload) => {
     phase: payload.phase,
     minutesLeft: Math.max(0, Math.min(99, Math.round(payload.minutesLeft))),
     totalMinutes: Math.max(1, Math.min(99, Math.round(payload.totalMinutes))),
-    progress: Math.min(1, Math.max(0, payload.progress)),
+    remainingRatio: Math.min(1, Math.max(0, payload.remainingRatio)),
     running: payload.running,
   }
   const key = JSON.stringify(constrained)
   if (key === lastDockKey) return
   lastDockKey = key
 
-  const badge = constrained.minutesLeft > 0 ? String(constrained.minutesLeft).padStart(2, '0') : ''
+  const badge =
+    constrained.minutesLeft > 0
+      ? String(constrained.minutesLeft).padStart(2, '0')
+      : constrained.running
+        ? '00'
+        : ''
   app.dock.setBadge(badge)
 
   const svg = buildDockSvg(constrained)

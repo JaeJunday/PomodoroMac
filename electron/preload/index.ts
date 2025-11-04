@@ -4,7 +4,7 @@ type DockIconPayload = {
   phase: 'focus' | 'break'
   minutesLeft: number
   totalMinutes: number
-  progress: number
+  remainingRatio: number
   running: boolean
 }
 
