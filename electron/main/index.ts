@@ -171,24 +171,54 @@ const applyLockState = (locked: boolean) => {
   }
 }
 
+const describeDockSectorPath = (ratio: number, radius: number, cx = 256, cy = 256): string => {
+  const clamped = Math.max(0, Math.min(1, ratio))
+  if (clamped <= 0) return ''
+  if (clamped >= 0.999) {
+    const epsilon = 0.1
+    return [
+      `M ${cx} ${cy}`,
+      `m 0 ${-radius}`,
+      `A ${radius} ${radius} 0 1 0 ${cx - epsilon} ${cy - radius}`,
+      'Z',
+    ].join(' ')
+  }
+
+  const startAngle = -Math.PI / 2
+  const sweep = clamped * Math.PI * 2
+  const endAngle = startAngle - sweep
+
+  const startX = cx + radius * Math.cos(startAngle)
+  const startY = cy + radius * Math.sin(startAngle)
+  const endX = cx + radius * Math.cos(endAngle)
+  const endY = cy + radius * Math.sin(endAngle)
+  const largeArcFlag = clamped > 0.5 ? 1 : 0
+
+  return [
+    `M ${cx} ${cy}`,
+    `L ${startX.toFixed(2)} ${startY.toFixed(2)}`,
+    `A ${radius} ${radius} 0 ${largeArcFlag} 0 ${endX.toFixed(2)} ${endY.toFixed(2)}`,
+    'Z',
+  ].join(' ')
+}
+
 const buildDockSvg = (payload: PomodoroDockPayload) => {
-  const accent = '#ff4d4f'
-  const background = payload.phase === 'focus' ? '#1a1d32' : '#172321'
-  const normalized = Math.min(1, Math.max(0, payload.remainingRatio))
-  const circumference = 2 * Math.PI * 190
-  const dashOffset = circumference * (1 - normalized)
+  const isFocus = payload.phase === 'focus'
+  const accent = isFocus ? '#ff4d4f' : '#36d7a0'
+  const background = isFocus ? '#1a1d32' : '#102a22'
+  const baseFill = isFocus ? '#212542' : '#18332b'
+  const rim = isFocus ? 'rgba(255,255,255,0.16)' : 'rgba(255,255,255,0.18)'
+  const sectorPath = describeDockSectorPath(payload.remainingRatio, 188)
   const minutesLabel = payload.minutesLeft > 0 ? String(payload.minutesLeft).padStart(2, '0') : payload.running ? '00' : '--'
-  const statusLabel = payload.phase === 'focus' ? 'FOCUS' : 'BREAK'
+  const statusLabel = isFocus ? 'FOCUS' : 'BREAK'
   const runState = payload.running ? 'RUN' : 'PAUSE'
   const totalLabel = String(Math.max(1, payload.totalMinutes)).padStart(2, '0')
 
   return `<svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
   <rect width="512" height="512" rx="120" fill="${background}"/>
-  <g transform="translate(256 256)">
-    <circle cx="0" cy="0" r="190" fill="none" stroke="rgba(255,255,255,0.08)" stroke-width="32"/>
-    <circle cx="0" cy="0" r="190" fill="none" stroke="${accent}" stroke-width="32" stroke-linecap="round"
-      stroke-dasharray="${circumference.toFixed(2)}" stroke-dashoffset="${dashOffset.toFixed(2)}" transform="rotate(-90) scale(-1 1)"/>
-  </g>
+  <circle cx="256" cy="256" r="188" fill="${baseFill}"/>
+  ${sectorPath ? `<path d="${sectorPath}" fill="${accent}" opacity="0.9"/>` : ''}
+  <circle cx="256" cy="256" r="188" fill="none" stroke="${rim}" stroke-width="16"/>
   <text x="256" y="238" text-anchor="middle" font-size="176" font-family="SF Pro Display, Helvetica Neue, Arial" font-weight="700" fill="#f6f8ff">${minutesLabel}</text>
   <text x="256" y="312" text-anchor="middle" font-size="48" font-family="SF Pro Text, Helvetica Neue, Arial" letter-spacing="12" fill="rgba(255,255,255,0.72)">${statusLabel}</text>
   <text x="256" y="360" text-anchor="middle" font-size="36" font-family="SF Pro Text, Helvetica Neue, Arial" letter-spacing="10" fill="rgba(255,255,255,0.5)">${runState}</text>

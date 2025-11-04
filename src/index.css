@@ -21,8 +21,10 @@
   --status-pill-background: rgba(120, 134, 255, 0.18);
   --status-pill-text: rgba(226, 233, 255, 0.88);
   --success-accent: #7ef3ca;
-  --timer-track: rgba(101, 113, 179, 0.24);
-  --timer-highlight: #ff4d4f;
+  --focus-highlight: #ff4d4f;
+  --break-highlight: #73f3c4;
+  --timer-surface: rgba(28, 31, 51, 0.72);
+  --timer-rim: rgba(255, 255, 255, 0.16);
   --timer-gesture-ring: rgba(255, 77, 79, 0.12);
   --panel-background: rgba(36, 41, 66, 0.55);
   --panel-border: rgba(98, 110, 170, 0.22);
@@ -56,8 +58,10 @@
   --status-pill-background: rgba(137, 153, 255, 0.22);
   --status-pill-text: rgba(33, 38, 68, 0.82);
   --success-accent: #29b276;
-  --timer-track: rgba(120, 138, 210, 0.28);
-  --timer-highlight: #ff4d4f;
+  --focus-highlight: #ff4d4f;
+  --break-highlight: #2ac79a;
+  --timer-surface: rgba(235, 239, 255, 0.78);
+  --timer-rim: rgba(78, 92, 160, 0.28);
   --timer-gesture-ring: rgba(255, 77, 79, 0.12);
   --panel-background: rgba(233, 237, 255, 0.6);
   --panel-border: rgba(149, 162, 232, 0.32);

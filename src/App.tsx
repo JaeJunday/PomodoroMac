@@ -4,6 +4,7 @@ import {
   useMemo,
   useRef,
   useState,
+  type CSSProperties,
   type FC,
   type PointerEvent as ReactPointerEvent,
 } from 'react'
@@ -20,7 +21,37 @@ const PHASE_META: Record<Phase, { label: string; defaultMinutes: number }> = {
 const SECONDS_IN_MINUTE = 60
 const MAX_MINUTES = 60
 const TIMER_RADIUS = 80
-const TIMER_CIRCUMFERENCE = 2 * Math.PI * TIMER_RADIUS
+
+const describeSectorPath = (ratio: number): string => {
+  const clamped = Math.max(0, Math.min(1, ratio))
+  if (clamped <= 0) return ''
+  if (clamped >= 0.999) {
+    const epsilon = 0.01
+    return [
+      `M 100 100`,
+      `m 0 ${-TIMER_RADIUS}`,
+      `A ${TIMER_RADIUS} ${TIMER_RADIUS} 0 1 0 ${100 - epsilon} ${100 - TIMER_RADIUS}`,
+      'Z',
+    ].join(' ')
+  }
+
+  const startAngle = -Math.PI / 2
+  const sweep = clamped * Math.PI * 2
+  const endAngle = startAngle - sweep
+
+  const startX = 100 + TIMER_RADIUS * Math.cos(startAngle)
+  const startY = 100 + TIMER_RADIUS * Math.sin(startAngle)
+  const endX = 100 + TIMER_RADIUS * Math.cos(endAngle)
+  const endY = 100 + TIMER_RADIUS * Math.sin(endAngle)
+  const largeArcFlag = clamped > 0.5 ? 1 : 0
+
+  return [
+    `M 100 100`,
+    `L ${startX.toFixed(3)} ${startY.toFixed(3)}`,
+    `A ${TIMER_RADIUS} ${TIMER_RADIUS} 0 ${largeArcFlag} 0 ${endX.toFixed(3)} ${endY.toFixed(3)}`,
+    'Z',
+  ].join(' ')
+}
 
 const formatTime = (totalSeconds: number) => {
   const minutes = Math.floor(totalSeconds / SECONDS_IN_MINUTE)
@@ -33,6 +64,7 @@ type TimerCirclePointerHandler = (event: ReactPointerEvent<HTMLDivElement>) => v
 type TimerCircleProps = {
   remainingSeconds: number
   totalSeconds: number
+  phase: Phase
   phaseLabel: string
   configuredMinutes: number
   running: boolean
@@ -46,6 +78,7 @@ type TimerCircleProps = {
 const TimerCircle: FC<TimerCircleProps> = ({
   remainingSeconds,
   totalSeconds,
+  phase,
   phaseLabel,
   configuredMinutes,
   running,
@@ -57,12 +90,19 @@ const TimerCircle: FC<TimerCircleProps> = ({
 }) => {
   const remainingRatio =
     totalSeconds <= 0 ? 0 : Math.min(1, Math.max(0, remainingSeconds / totalSeconds))
-  const dashOffset = TIMER_CIRCUMFERENCE * (1 - remainingRatio)
+  const accentColor =
+    phase === 'focus' ? 'var(--focus-highlight)' : 'var(--break-highlight)'
+  const accentStyle = useMemo(
+    () => ({ '--accent-color': accentColor } as CSSProperties),
+    [accentColor],
+  )
+  const sectorPath = useMemo(() => describeSectorPath(remainingRatio), [remainingRatio])
   const classes = `timer-circle${dragging ? ' is-dragging' : ''}`
 
   return (
     <div
       className={classes}
+      style={accentStyle}
       onPointerDown={onPointerDown}
       onPointerMove={onPointerMove}
       onPointerUp={onPointerUp}
@@ -73,16 +113,10 @@ const TimerCircle: FC<TimerCircleProps> = ({
       aria-valuenow={Math.max(1, Math.round(configuredMinutes))}
       aria-label={`${phaseLabel} 타이머 설정`}
     >
-      <svg viewBox='0 0 200 200'>
-        <circle className='timer-circle__track' cx='100' cy='100' r={TIMER_RADIUS} />
-        <circle
-          className='timer-circle__progress'
-          cx='100'
-          cy='100'
-          r={TIMER_RADIUS}
-          strokeDasharray={TIMER_CIRCUMFERENCE}
-          strokeDashoffset={Math.max(0, Math.min(TIMER_CIRCUMFERENCE, dashOffset))}
-        />
+      <svg className='timer-circle__svg' viewBox='0 0 200 200'>
+        <circle className='timer-circle__base' cx='100' cy='100' r={TIMER_RADIUS} />
+        {sectorPath ? <path className='timer-circle__sector' d={sectorPath} /> : null}
+        <circle className='timer-circle__rim' cx='100' cy='100' r={TIMER_RADIUS} />
       </svg>
       <div className='timer-circle__content'>
         <span className='timer-time'>{formatTime(remainingSeconds)}</span>
@@ -310,6 +344,7 @@ const App = () => {
         <TimerCircle
           remainingSeconds={remaining}
           totalSeconds={totalSeconds}
+          phase={phase}
           phaseLabel={PHASE_META[phase].label}
           configuredMinutes={durations[phase]}
           running={running}

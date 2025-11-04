@@ -4,6 +4,8 @@ import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import electron from 'vite-plugin-electron/simple'
 import pkg from './package.json'
+import { spawn } from 'node:child_process'
+import electronPath from 'electron'
 
 // https://vitejs.dev/config/
 export default defineConfig(({ command }) => {
@@ -29,7 +31,11 @@ export default defineConfig(({ command }) => {
             if (process.env.VSCODE_DEBUG) {
               console.log(/* For `.vscode/.debug.script.mjs` */'[startup] Electron App')
             } else {
-              args.startup()
+              // Manually spawn Electron process
+              spawn(electronPath as unknown as string, ['.'], {
+                cwd: path.join(__dirname, 'dist-electron/main'),
+                stdio: 'inherit',
+              }).on('close', process.exit)
             }
           },
           vite: {
