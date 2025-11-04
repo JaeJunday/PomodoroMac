@@ -1,0 +1,6 @@
+- 메인 프로세스: `electron/main` (BrowserWindow 생성, IPC, 업데이트 로직 등)
+- 프리로드 스크립트: `electron/preload` (contextBridge, 로딩 오버레이)
+- 렌더러: `src/` React + TypeScript + TailwindCSS, Vite 번들링
+- 정적 자산: `public/`
+- 빌드/패키징 설정: `electron-builder.json`, `vite.config.ts`
+- 테스트: `vitest`, `test` 디렉터리에 샘플 있음

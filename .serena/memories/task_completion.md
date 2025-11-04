@@ -1,0 +1,4 @@
+- 변경 사항 후에는 `bun run test`로 단위 테스트 확인 (필요 시 모드 `--runInBand`).
+- Electron 런타임 영향이 크면 `bun run dev`로 수동 검증.
+- 패키징 변경 시 `bun run build`로 macOS 바이너리 생성 여부 확인.
+- 문서/README 갱신 시 수동 검수 필수.

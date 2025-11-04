@@ -1,0 +1,4 @@
+- TypeScript 함수형 React 컴포넌트 사용, 상태 관리는 React 훅 기반.
+- TailwindCSS가 설정되어 있으나 기본 CSS 파일도 존재; 컴포넌트 단위 스타일을 우선 검토.
+- ESLint/Prettier 직접 설정은 없으므로 Vite/TypeScript 기본 포맷 유지, 의미 있는 주석만 추가.
+- Electron 메인 프로세스는 CommonJS 대신 ES Module(`type":"module"`) 문법 사용.

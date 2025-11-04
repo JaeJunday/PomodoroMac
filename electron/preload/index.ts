@@ -1,5 +1,13 @@
 import { ipcRenderer, contextBridge } from 'electron'
 
+type DockIconPayload = {
+  phase: 'focus' | 'break'
+  minutesLeft: number
+  totalMinutes: number
+  progress: number
+  running: boolean
+}
+
 // --------- Expose some API to the Renderer process ---------
 contextBridge.exposeInMainWorld('ipcRenderer', {
   on(...args: Parameters<typeof ipcRenderer.on>) {
@@ -21,6 +29,24 @@ contextBridge.exposeInMainWorld('ipcRenderer', {
 
   // You can expose other APTs you need here.
   // ...
+})
+
+contextBridge.exposeInMainWorld('pomodoro', {
+  updateDockIcon(payload: DockIconPayload) {
+    return ipcRenderer.invoke('pomodoro:update-dock-icon', payload)
+  },
+  setLockState(locked: boolean) {
+    return ipcRenderer.invoke('pomodoro:set-lock-state', locked)
+  },
+  getLockState() {
+    return ipcRenderer.invoke('pomodoro:get-lock-state')
+  },
+  onPreventClose(callback: () => void) {
+    const channel = 'pomodoro:prevent-close'
+    const listener = () => callback()
+    ipcRenderer.on(channel, listener)
+    return () => ipcRenderer.off(channel, listener)
+  },
 })
 
 // --------- Preload scripts loading ---------

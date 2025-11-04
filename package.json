@@ -1,8 +1,8 @@
 {
-  "name": "electron-vite-react",
-  "version": "2.2.0",
+  "name": "pomodoro-mac",
+  "version": "0.1.0",
   "main": "dist-electron/main/index.js",
-  "description": "Electron Vite React boilerplate.",
+  "description": "macOS 전용 Electron 뽀모도로 타이머",
   "author": "草鞋没号 <308487730@qq.com>",
   "license": "MIT",
   "private": true,

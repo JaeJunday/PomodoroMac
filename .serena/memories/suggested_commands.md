@@ -1,0 +1,6 @@
+- 의존성 설치: `bun install`
+- 개발 서버(렌더러 + 메인 동시 실행): `bun run dev`
+- 프로덕션 번들 및 앱 패키징: `bun run build`
+- 번들 검증용 정적 프리뷰: `bun run preview`
+- 단위 테스트(Vitest): `bun run test`
+- Electron 디버깅: `bunx electron --inspect` (필요 시)

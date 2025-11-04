@@ -1,0 +1,3 @@
+- Electron + Vite + React(TypeScript) 기반으로 macOS용 뽀모도로 타이머 앱을 개발하는 프로젝트.
+- Bun을 패키지 매니저 및 실행 엔진으로 사용.
+- 앱은 Dock 아이콘 애니메이션과 화면에 고정되는 타이머 UI 두 모드를 제공할 예정.
