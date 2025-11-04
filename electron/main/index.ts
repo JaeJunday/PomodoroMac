@@ -113,6 +113,27 @@ async function createWindow() {
 
 app.whenReady().then(createWindow)
 
+app.on('window-all-closed', () => {
+  win = null
+  if (process.platform !== 'darwin') app.quit()
+})
+
+app.on('second-instance', () => {
+  if (win) {
+    if (win.isMinimized()) win.restore()
+    win.focus()
+  }
+})
+
+app.on('activate', () => {
+  const allWindows = BrowserWindow.getAllWindows()
+  if (allWindows.length) {
+    allWindows[0].focus()
+  } else {
+    createWindow()
+  }
+})
+
 const isMac = process.platform === 'darwin'
 
 const parseDockPayload = (raw: unknown): PomodoroDockPayload | null => {

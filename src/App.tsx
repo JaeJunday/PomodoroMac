@@ -176,6 +176,10 @@ const App = () => {
     0,
     Math.min(totalMinutes, Math.ceil(remaining / SECONDS_IN_MINUTE)),
   )
+  const remainingRatio = Math.max(
+    0,
+    Math.min(1, remaining / (MAX_MINUTES * SECONDS_IN_MINUTE)),
+  )
   const nextPhase: Phase = phase === 'focus' ? 'break' : 'focus'
 
   const showToast = useCallback((message: string) => {
@@ -208,7 +212,6 @@ const App = () => {
   }, [remaining, running, phase, durations])
 
   useEffect(() => {
-    const remainingRatio = totalMinutes === 0 ? 0 : minutesLeft / totalMinutes
     window.pomodoro?.updateDockIcon?.({
       phase,
       minutesLeft,
@@ -216,7 +219,7 @@ const App = () => {
       running,
       remainingRatio,
     })
-  }, [phase, minutesLeft, totalMinutes, running])
+  }, [phase, minutesLeft, totalMinutes, running, remainingRatio])
 
   useEffect(() => {
     return () => {
